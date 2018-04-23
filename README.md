@@ -10,12 +10,14 @@ Please cite this manuscript if using privacy-rarefaction in your work.
 ## Requirements, Dependencies
 Privacy-rarefaction is currently implemented as a command line script in python versions 2.6 and 2.7. It will run on desktop computers but it is advised to use a linux computer cluster for speed and simplicity. Mac and Windows operating systems are not tested. Required python modules:
 - sys
-- numpy
-- time
 - os
 - argparse
+- time
+- numpy
+- random
 - subprocess
 - multiprocessing
+
 Privacy-rarefaction will call samtools idxstats (LINK), hence you need to have 'samtools' in the $PATH variable.
 
 ## Installation
@@ -32,39 +34,33 @@ RNA-seq reads are not adviseable for privacy-rarefaction because they indicate o
 
 
 ## Outputs
-a) Quantitative results:
-b) qualitative results
+- quantitative results
+
+- qualitative results
 
 
 # Tutorial
 Download or clone this repository to your machine. Then navigate to the download directory on the commandline.
-
 ```
-git clone XXYZ
-cd XXYz
+git clone https://github.com/mscharmann/privacy-rarefaction 
+cd privacy-rarefaction
 ```
 Make sure that python 2.6 or 2.7 and samtools idxstats are available:
-
 ```
 samtools idxstats
 python --version  
 ```
-
 Once positive, execute privacy-rarefaction to check that the relevant python modules are installed. This will also show you the command line arguments of the script:
-
 ```
 python privacy-rarefaction.v2.2.py --help
 ```
-
 If it complains about missing modules you need to install or load them first in your environment.
 Else, you are ready to run the privacy rarefaction example!
 In the directory 'example', you will find 20 small .BAM files. These are not real reads mapped to real contigs but for the purpose of this tutorial they will behave as-if, except running much faster. There is also a textfile 'sexlist.txt'
-
 ```
 python privacy-rarefaction.v2.2.py --bam_dir ./examples/ --bam_suffix .bam --sex_list sexlist.txt --CPUs 12 --o example_run
 
 ```
-
 After finishing you can inspect the three output files:
 - male_specific_candidates.example_run.txt
 - female_specific_candidates.example_run.txt
