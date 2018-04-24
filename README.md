@@ -34,9 +34,9 @@ RNA-seq reads are not adviseable for privacy-rarefaction because they indicate o
 
 
 ## Outputs
-- quantitative results
+- quantitative results: permutation_results.txt - to decide whether Y-hemizygous or W-hemizygous contigs exist
 
-- qualitative results
+- qualitative results: female_specific_candidates.txt and male_specific_candidates.txt - to decide which contigs are the best candidates
 
 
 # Tutorial
