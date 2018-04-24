@@ -31,15 +31,16 @@
 import sys
 import numpy
 import time
-#from scipy import stats
 import os
 import argparse
 import subprocess
 import multiprocessing as mp
+import collections
+import random
 
 """
 example usage:
-python /privacy-rarefaction.v2.2.py --bam_dir ../ --nthreads 20 --sex_list fufulist.txt --n_resampling 20 --bam_suffix "-RG.bam "
+python /privacy-rarefaction.v2.2.py --bam_dir ../ --CPUs 20 --sex_list fufulist.txt --n_resampling 20 --bam_suffix "-RG.bam "
 
 
 PSEUDOCODE:
@@ -99,17 +100,16 @@ def get_commandline_arguments ():
 	
 	parser = argparse.ArgumentParser()
 	
-	parser.add_argument("--bam_dir", required=True, help="name/path of vcf input file", metavar="DIRECTORY")
-
+	parser.add_argument("--bam_dir", required=True, help="path of directory with .BAM files", metavar="DIRECTORY")
+	parser.add_argument("--bam_suffix", required=True, help="suffix of the .BAM files, e.g. -RG.bam; if suffix includes dash (-), please wrap it in quotes and add a terminal space character (known bug in argparse")
 	parser.add_argument("--sex_list", required=True,
         dest="sexlistfile", type=extant_file,
 		help="name and path of the sex_list file: 1st column barcode/sample name separated by tab from second column indicating the sex; males = 1 and females = 2", metavar="FILE")
-	parser.add_argument("--nthreads", required=True, help="number of threads to use in parallelised parts of script", metavar="INT")
-	parser.add_argument("--n_resampling", nargs='?', help="number of resampled datasets to be drawn for jacknifing over sample size & number of permutations for sex vs. sample ID", metavar="INT", default = "200")
-	parser.add_argument("--bam_suffix", required=True, help="suffix of the bam files, e.g. -RG.bam; if suffix includes dash (-), please wrap it in quotes and add a terminal space character (known bug in argparse")
-	parser.add_argument("--bam_dir", required=True, help="name/path of vcf input file", metavar="DIRECTORY")
-	
-	parser.add_argument("--min_support_to_report_loci", nargs='?', help="minimum boostrap support that a locus must reach to be reported in the qualitative results", metavar="FLOAT", default = "0.5")
+	parser.add_argument("--CPUs", required=True, help="number of CPUs to use in multiprocessing/parallel parts of script", metavar="INT")
+	parser.add_argument("--o", required=True, help="name for the output files", metavar="STRING")
+	parser.add_argument("--n_resampling", nargs='?', help="number of resampled datasets to be drawn for jacknifing over sample size & number of permutations for sex vs. sample ID, default = 200", metavar="INT", default = "200")
+	parser.add_argument("--min_support_to_report_loci", nargs='?', help="minimum boostrap support that a locus must reach to be reported in the qualitative results, default = 0.5", metavar="FLOAT", default = "0.5")
+	parser.add_argument("--min_cov", nargs='?', help="minimum read coverage (depth) per contig to count as 'present', below contig will be calssified as 'absent', default = 1", metavar="INT", default = "1")
 	
 	args = parser.parse_args()
 	
@@ -124,8 +124,9 @@ def check_congruence (sexlistfile, bam_folder, bam_suffix):
 	sexlistsamples = []
 	with open(sexlistfile, "r") as INFILE:
 		for line in INFILE:
-			fields = line.strip("\n").split("\t")
-			sexlistsamples.append(fields[0])
+			if len(line) > 1:
+				fields = line.strip("\n").split("\t")
+				sexlistsamples.append(fields[0])
 	sexlistsamples = set(sexlistsamples)
 	
 	for sample in sexlistsamples:
@@ -142,21 +143,27 @@ def read_sexlist (sexlist_file):
 	sexdict = {}
 	with open(sexlist_file, "r") as INFILE:	
 		for line in INFILE:
-			sample = line.strip("\n").split("\t")[0] 
-			sex = line.strip("\n").split("\t")[1] 
-			if sex == "1":
-				gender = "male"
-			elif sex == "2":
-				gender = "female"			
-			try:
-				sexdict[gender].append(sample)
-			except KeyError:
-				sexdict[gender] = [sample]
+			if len(line) > 1:
+				sample = line.strip("\n").split("\t")[0] 
+				sex = line.strip("\n").split("\t")[1] 
+				if sex == "1":
+					gender = "male"
+				elif sex == "2":
+					gender = "female"			
+				try:
+					sexdict[gender].append(sample)
+				except KeyError:
+					sexdict[gender] = [sample]
+	
+	for k, v in sexdict.items():
+		print k + ":		"  + v[0] + "\n\t\t" + "\n\t\t".join(v[1:]) + "\n"
+		 
+	
 	return sexdict
 
 ###############
 
-def parse_mappings(bam_dir, sexdict, n_resampling, nthreads, bam_suffix, min_support_to_report_loci):
+def privacy_rarefaction_core(bam_dir, sexdict, n_resampling, CPUs, bam_suffix, min_support_to_report_loci, min_cov, output_name):
 	
 	all_samples = sorted(sexdict["male"] + sexdict["female"])
 	
@@ -168,32 +175,33 @@ def parse_mappings(bam_dir, sexdict, n_resampling, nthreads, bam_suffix, min_sup
 				sexdict_idx[sex].append(idx)
 			except KeyError:
 				sexdict_idx[sex] = [idx]
-	print sexdict_idx	
+#	print sexdict_idx	
 	
 	all_samples = sorted(sexdict["male"] + sexdict["female"])
 	
 	# read mapping info to memory; only once!
+	print "reading mapping information"
 	mapping_data = {}
 	for sample in all_samples:
-		sample_mapped = get_pres_abs_per_contig (bam_dir + sample + bam_suffix)
+		sample_mapped = get_pres_abs_per_contig (bam_dir + sample + bam_suffix, min_cov)
 		for contig in sample_mapped.keys():
 			try:
 				mapping_data[contig].append(sample_mapped[contig])
 			except KeyError:
 				mapping_data[contig] = [ sample_mapped[contig] ]
 	
-	print len(mapping_data.keys())
+	print "total contigs:	", len(mapping_data.keys())
 	for contig, mapped in mapping_data.items():
 		if sum(mapped) == 0:
 			del mapping_data[contig]
-	print len(mapping_data.keys())
+	print "contigs with mapped reads passing coverage threshold:	", len(mapping_data.keys())
 		
 	# make the stats, jacknifing over sample number numbers (100 replicate subsamples per jackknife-level)
 	min_n = min( len(sexdict["male"]), len(sexdict["female"]) )
 
 	# now the jackknife, multi-threaded!
 	
-	MT_return_dict = MT_resampling(min_n, sexdict_idx, mapping_data, n_resampling, nthreads, permute_sexes = False)
+	MT_return_dict = MT_resampling(min_n, sexdict_idx, mapping_data, n_resampling, CPUs, permute_sexes = False)
 	
 	# MT_return_dict structure:
 	# keys: range(n_resampling)
@@ -223,18 +231,20 @@ def parse_mappings(bam_dir, sexdict, n_resampling, nthreads, bam_suffix, min_sup
 
 		pres_abs_resampled_results[i] = [male_specific, female_specific, male_specific_std, female_specific_std, male_specific_min, female_specific_min, total_contigs_m_mean, total_contigs_m_std, total_contigs_f_mean, total_contigs_f_std]
 	
-	print pres_abs_resampled_results
+#	print pres_abs_resampled_results
 		
 	# in the end, evaluate the resampled loci by considering only those as truly specific that turn up as specific loci in 50% of re-/subsampling rounds:
 	
 	# clear prev. outputs files if present:
-	with open("male_specific_candidates.txt", "w") as OUTFILE:
+	with open("male_specific_candidates." + output_name + ".txt", "w") as OUTFILE:
 		OUTFILE.write("subsample size per sex" + "\t" + "contig_ID" + "\t" + "subsampling bootstrap support" + "\n")
-	with open("female_specific_candidates.txt", "w") as OUTFILE:
+	with open("female_specific_candidates." + output_name + ".txt", "w") as OUTFILE:
 		OUTFILE.write("subsample size per sex" + "\t" + "contig_ID" + "\t" + "subsampling bootstrap support" + "\n")
 	
 		
 	consistently_specific_loci = {}
+	print "qualitative evalutation of candidate sex-secific loci . . ."
+	print "candidates passing bootstrap threshold:\nM F"
 	for i in range(1, min_n+1):
 #		print "get lists of loci from all resamplings"
 		spec = [MT_return_dict[j][1][i][0] for j in range(n_resampling) ] # get lists of loci from all resamplings
@@ -259,7 +269,7 @@ def parse_mappings(bam_dir, sexdict, n_resampling, nthreads, bam_suffix, min_sup
 		
 #	print "got sex specific loci IDs that are consistent among 0.5 of subsampling rounds, outputting to file"		
 #	print pres_abs_resampled_results
-		with open("male_specific_candidates.txt", "a") as OUTFILE:
+		with open("male_specific_candidates." + output_name + ".txt", "a") as OUTFILE:
 			outlines = []
 #			outlines.append( [ x+"\t"+str(i) for x in consistently_specific_loci[i][0] ] )
 #			outlines.append( [ str(i) + "\t" +  x + "\t" + str((float(m_counts[x])/float(n_resampling))*100.0) for x in consistently_specific_loci[i][0] ] )
@@ -267,7 +277,7 @@ def parse_mappings(bam_dir, sexdict, n_resampling, nthreads, bam_suffix, min_sup
 			outlines = [ "\n".join(x) for x in outlines[:] ]
 			OUTFILE.write( "\n".join(outlines) + "\n")
 	
-		with open("female_specific_candidates.txt", "a") as OUTFILE:
+		with open("female_specific_candidates." + output_name + ".txt", "a") as OUTFILE:
 			outlines = []
 #			outlines.append( [ x+"\t"+str(i) for x in consistently_specific_loci[i][1] ] )
 #			outlines.append( [ str(i) + "\t" +  x + "\t" + str((float(f_counts[x])/float(n_resampling))*100.0) for x in consistently_specific_loci[i][1] ] )
@@ -277,9 +287,9 @@ def parse_mappings(bam_dir, sexdict, n_resampling, nthreads, bam_suffix, min_sup
 	
 	
 	### now go for the null hypothesis that male and female are identical (permutation):
-	print "going for the null hypothesis that male and female are identical (permutation)"
+	print "testing null hypothesis that male and female are identical (permutation)"
 	
-	MT_return_dict = MT_resampling(min_n, sexdict_idx, mapping_data, n_resampling, nthreads, permute_sexes = True)
+	MT_return_dict = MT_resampling(min_n, sexdict_idx, mapping_data, n_resampling, CPUs, permute_sexes = True)
 	pres_abs_resampled_results_perm = {}	
 	for i in range(1, min_n+1):
 		male_specific = [MT_return_dict[j][0][i-1][0] for j in range(n_resampling) ]
@@ -309,33 +319,33 @@ def parse_mappings(bam_dir, sexdict, n_resampling, nthreads, bam_suffix, min_sup
 		
 		collected_results[i] = {"obs_means" : [male_spec_obs, female_spec_obs], "obs_std" : [male_spec_obs_std, female_spec_obs_std], "p_val" : [p_male, p_female], "total_contigs_stats" : pres_abs_resampled_results[i][6:] }
 	
-	print collected_results
+#	print collected_results
 	
 	## write to a file:
-	with open("permutation_results.txt", "w") as OUTFILE:
+	with open("permutation_results." + output_name + ".txt", "w") as OUTFILE:
 		outlines = [["n_samples_per_sex", "male_specific_mean", "male_specific_std", "p_val", "female_specific_mean", "female_specific_std", "p_val", "total_contigs_m_mean", "total_contigs_m_std", "total_contigs_f_mean", "total_contigs_f_std"]]
 		for i in range(1, min_n+1):
 			outlines.append( [str(x) for x in [i, collected_results[i]["obs_means"][0], collected_results[i]["obs_std"][0], collected_results[i]["p_val"][0], collected_results[i]["obs_means"][1], collected_results[i]["obs_std"][1], collected_results[i]["p_val"][1], collected_results[i]["total_contigs_stats"][0], collected_results[i]["total_contigs_stats"][1], collected_results[i]["total_contigs_stats"][2], collected_results[i]["total_contigs_stats"][3] ] ] )
 		
 		
 		outlines = [ "\t".join(x) for x in outlines[:] ]
-		OUTFILE.write( "\n".join(outlines) )
+		OUTFILE.write( "\n".join(outlines)  + "\n")
 	
 	
 
 def count_item_occurence(lst):
     
-    import collections
     res = collections.defaultdict(lambda: 0)
     for v in lst:
         res[v] += 1
     return res
 	
-def MT_resampling(min_n, sexdict_idx, mapping_data, n_resampling, nthreads, permute_sexes):
-
+def MT_resampling(min_n, sexdict_idx, mapping_data, n_resampling, CPUs, permute_sexes):
+	
+	print "resampling . . ."	
 	results = {}
 	
-	pool = mp.Pool(nthreads) #use all available cores, otherwise specify the number you want as an argument
+	pool = mp.Pool(CPUs) #use all available cores, otherwise specify the number you want as an argument
 	for i in range(n_resampling): # there is one worker for each resampling round
 		results[i] = pool.apply_async(pres_abs_MT, args=(min_n, sexdict_idx, mapping_data, permute_sexes))
 	pool.close()
@@ -347,7 +357,7 @@ def MT_resampling(min_n, sexdict_idx, mapping_data, n_resampling, nthreads, perm
 	results1 = {}
 	for i, result in results.items():
 		results1[i] = result.get()
-	
+
 	return results1
 
 ####
@@ -360,10 +370,9 @@ def pres_abs_MT(min_n, sexdict_idx, mapping_data, permute_sexes):
 	
 #	print permute_sexes
 	
-	# this construct is necessary to ensure that random has a different seed in 
-	# each thread; otherwise each thread will return the same random.choice!
-	pid = mp.current_process()._identity[0]
-	randst = numpy.random.mtrand.RandomState(pid)
+	# random.seed() is necessary to ensure that random has a different seed in 
+	# each thread; otherwise each thread will return the same random.choice! It uses system time to make the seed.
+	random.seed()
 	
 	# pres_abs_result returns number (count) of "sex-specific" contigs for each stringency level i
 	pres_abs_result = []
@@ -376,12 +385,13 @@ def pres_abs_MT(min_n, sexdict_idx, mapping_data, permute_sexes):
 
 	if permute_sexes == False:
 		for i in range(1, min_n+1):
-	#		print i
-			jackn_males = randst.choice(sexdict_idx["male"], i, replace = False)
-			jackn_females = randst.choice(sexdict_idx["female"], i, replace = False)			
-	#		print jackn_males, jackn_females			
+#			print i
+			jackn_males = random.sample(sexdict_idx["male"], i)
+			jackn_females = random.sample(sexdict_idx["female"], i)			
+#			print jackn_males, jackn_females
+		
 			pres_abs_data = get_pres_abs (mapping_data, jackn_males, jackn_females)
-			
+
 			# [male_specific, female_specific, male_total_loci, female_total_loci]
 			pres_abs_result.append([0,0,0,0])
 			
@@ -411,9 +421,9 @@ def pres_abs_MT(min_n, sexdict_idx, mapping_data, permute_sexes):
 		# the permutation option: contig_details is left empty since meaningless; pres_abs_result returns number of "sex-specific" contigs for each stringency level i
 		all_samples = sexdict_idx["female"] + sexdict_idx["male"]
 		for i in range(1, min_n+1):
-	#		print i
-			jackn_males = randst.choice(all_samples, i, replace = False)
-			jackn_females = randst.choice([ x for x in all_samples if x not in jackn_males], i, replace = False)			
+#			print i
+			jackn_males = random.sample(sexdict_idx["male"], i)
+			jackn_females = random.sample(sexdict_idx["female"], i)			
 #			print jackn_males, jackn_females			
 			pres_abs_data = get_pres_abs (mapping_data, jackn_males, jackn_females)
 
@@ -434,17 +444,18 @@ def get_pres_abs (mapping_data, males, females):
 	# get the histogram of locus presence / absence: count for each sex
 	# mapping_data is a dictionary; keys = contigs ; values = list of pres/abs (1/0) info for the samples; samples are represented by a fixed list index!
 	# e.g. { '403848_L105': [0, 1, 0, 1] }
-
+	
 	pres_abs_data = {}
-	for contig, mappedlist in mapping_data.items():		
+#	print mapping_data.keys()
+	for contig, mappedlist in mapping_data.items():
 		males_presence = sum( [ mappedlist[x] for x in males ] )	
 		females_presence = sum( [ mappedlist[x] for x in females ] )
 		pres_abs_data[contig] = [males_presence, females_presence]
-		
+	
 	return pres_abs_data
 	
 
-def get_pres_abs_per_contig (bamfile):
+def get_pres_abs_per_contig (bamfile, min_cov):
 	
 	bash_command = "samtools idxstats {0}".format(bamfile)
 	print bash_command
@@ -465,7 +476,7 @@ def get_pres_abs_per_contig (bamfile):
 			# 
 			tag = fields[0]
 			dp = int(fields[2])
-			if dp > 0:
+			if dp >= min_cov:
 				stdout_dict[tag] = 1
 			else:
 				stdout_dict[tag] = 0
@@ -482,8 +493,7 @@ args.bam_suffix = args.bam_suffix.strip()
 check_congruence (args.sexlistfile, args.bam_dir,args.bam_suffix)
 
 sexdict = read_sexlist (args.sexlistfile)
-print sexdict
 
-parse_mappings(args.bam_dir, sexdict, int(args.n_resampling), int(args.nthreads), args.bam_suffix, float(args.min_support_to_report_loci))
+privacy_rarefaction_core(args.bam_dir, sexdict, int(args.n_resampling), int(args.CPUs), args.bam_suffix, float(args.min_support_to_report_loci), int(args.min_cov), args.o)
 
 print "Done!"
