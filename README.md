@@ -45,7 +45,7 @@ Make sure that python 2.6 or 2.7 and samtools idxstats are available:
 samtools idxstats
 python --version 
 ```
-Download or clone this repository to your machine. Then navigate to that directory on the commandline, and unpack the example data:
+Download or clone this repository to your machine. Then navigate to that directory on the commandline:
 ```
 git clone https://github.com/mscharmann/privacy-rarefaction 
 cd privacy-rarefaction
