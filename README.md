@@ -59,15 +59,28 @@ Else, you are ready to run the privacy rarefaction example, so unpack the exampl
 ```
 tar -xzf example.tar.gz
 ```
-In the directory 'example', you will find 20 small .BAM files. These are not real reads mapped to real contigs but for the purpose of this tutorial they will behave as-if, except running much faster. There is also a textfile 'sexlist.txt'
+In the directory 'example', you will find 20 small .BAM files. These are not real reads mapped to real contigs but for the purpose of this tutorial they will behave as-if, except running much faster. There is also a textfile 'sexlist.txt'. You can now start the analysis like this:
 ```
 python privacy-rarefaction.v2.2.py --bam_dir ./example/ --bam_suffix .bam --sex_list ./example/sexlist.txt --CPUs 12 --o example_run
 
 ```
 After finishing you can inspect the three output files:
-- male_specific_candidates.example_run.txt
-- female_specific_candidates.example_run.txt
 - permutation_results.example_run.txt
+
+This is the quantitative result of privacy-rarefaction and is very intuitive when plotted with the included R script:
+```
+Rscript plotting_privacy-rarefaction_curves.R permutation_results.example_run.txt
+```
+Open the resulting .pdf file and inspect the curves. The number of candidates for male- resp. female-specific candidates start out similar at low stringecies. In this example, only female-specific (W-hemizygous) contigs were simulated, so we know that any male-specific candidates are false-positives. As expected, the candidate counts start to diverge with increasing stringency, i.e. the male-specific candidates drop more steeply than the female-specific candidates. At stringency 4-5 the standard deviations do not overlap anymore. This indicates a significant quantitative difference in sex-specific candidates between the two mutually exclusive alternatives Y-hemizygous and W-hemizygous (there is also a p-value for this in the 'permutation_results.example_run.txt' file). However, there may still be some chance of false-positives among the female-specific candidates, as false-positive male-specific candidates are not yet eliminated at this stringency. But at stringecy 10, the count for male-specific candidates has dropped to zero (no data point on log-sale): here, the biologically plausible expectation of only one sex having sex-specific loci has been met, as well as the known truth (only female-specific loci were simulated). You have successfully distilled true presence-absence from noisy, confounded data.
+
+
+The two further output files are the qualitative result of privacy-rarefaction:
+- female_specific_candidates.example_run.txt
+- male_specific_candidates.example_run.txt
+
+They list female- resp. male-specific candidate loci identified by privacy-rarefaction, separately for each level of stringency (N males vs N females), and with the proportion of resampled male-female sets that the contig was sex-specific in ("bootstrap support"). In the toy example, only the contigs 9,000-10,000 were simulated as female-specific. You will notice that with adeaquate number of resampling rounds (>= 200), no false-positives will appear at the bottom of the list in 'female_specific_candidates.example_run.txt'. However, male-specific candidates (which are entirely false-positives in this example) never make it beyond stringency 3 or 4 and hence do not appear in 'male_specific_candidates.example_run.txt'. 
+
+The quality, or confidence that a contig is actually sex-specific, increases with the stringency and the bootstrap support. Hence, if you were to design PCR primers for validation of these contigs, you should start with those at the very bottom of the lists first. These are the contigs that were most consistently sequenced from one of the sexes only.
 
 
 

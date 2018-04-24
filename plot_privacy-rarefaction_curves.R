@@ -39,11 +39,15 @@ yf=log(female_specific_mean)
 f_lower=log(female_specific_mean-female_specific_std)
 f_upper=log(female_specific_mean+female_specific_std)
 
-svg(sprintf("candidate_drop.ddRAD_denovo.%s.svg", outname), width = 8, height = 4)
+g = c(ym,yf)
+ylim_lower = min( g[g!=-Inf] ) 
+ylim_upper = max( g[g!=-Inf] ) 
+
+pdf(sprintf("candidate_drop.%s.pdf", outname), width = 8, height = 4)
 
 plot(x, ym, pch=19,
-ylim=c(-4,12),
-xlim=c(1.0, 27.0 ),
+ylim=c(ylim_lower,ylim_upper),
+xlim=c(1.0, indata$n_samples_per_sex[length( indata$n_samples_per_sex)] ),
 xlab="stringency (number of samples per sex)",
 ylab="log(sex-specific candidate count) +- SD",
 main=outname
@@ -69,9 +73,14 @@ detach(indata)
 }
 
 
-for (i in c("gracilis","pervillei",...)){
-	mydata <- read.table( sprintf("permutation_results.%s.txt", i ), sep = "\t", header = TRUE)
-	plot_candidate_drop(mydata, i)
-}
+##
+args = commandArgs(trailingOnly=TRUE)
 
+infile <- args[1]
+
+mydata <- read.table( infile, sep = "\t", header = TRUE)
+
+plot_candidate_drop(mydata, infile)
+
+print("Done plotting!")
 ######
