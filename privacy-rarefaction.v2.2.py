@@ -1,6 +1,6 @@
 #!/usr/bin/python
-# python 2.6 ! in 2.7 something with the random number generation is bugged
-#
+# python 2.6 or 2.7 
+
 # privacy-rarefaction.v2.2.py
 # a python script that implements privacy-rarefaction to extract sex-specific RAD-tags from .bam alignment files
 # Copyright (C) 2017, ETH Zurich, Mathias Scharmann
