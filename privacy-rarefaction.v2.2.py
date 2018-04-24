@@ -243,7 +243,7 @@ def privacy_rarefaction_core(bam_dir, sexdict, n_resampling, CPUs, bam_suffix, m
 	
 		
 	consistently_specific_loci = {}
-	print "qualitative evalutation of candidate sex-secific loci . . ."
+	print "qualitative evaluation of candidate sex-secific loci . . ."
 	print "candidates passing bootstrap threshold:\nM F"
 	for i in range(1, min_n+1):
 #		print "get lists of loci from all resamplings"

@@ -69,7 +69,7 @@ After finishing you can inspect the three output files:
 
 This is the quantitative result of privacy-rarefaction and is very intuitive when plotted with the included R script:
 ```
-Rscript plotting_privacy-rarefaction_curves.R permutation_results.example_run.txt
+Rscript plot_privacy-rarefaction_curves.R permutation_results.example_run.txt
 ```
 Open the resulting .pdf file and inspect the curves. The number of candidates for male- resp. female-specific candidates start out similar at low stringecies. In this example, only female-specific (W-hemizygous) contigs were simulated, so we know that any male-specific candidates are false-positives. As expected, the candidate counts start to diverge with increasing stringency, i.e. the male-specific candidates drop more steeply than the female-specific candidates. At stringency 4-5 the standard deviations do not overlap anymore. This indicates a significant quantitative difference in sex-specific candidates between the two mutually exclusive alternatives Y-hemizygous and W-hemizygous (there is also a p-value for this in the 'permutation_results.example_run.txt' file). However, there may still be some chance of false-positives among the female-specific candidates, as false-positive male-specific candidates are not yet eliminated at this stringency. But at stringecy 10, the count for male-specific candidates has dropped to zero (no data point on log-sale): here, the biologically plausible expectation of only one sex having sex-specific loci has been met, as well as the known truth (only female-specific loci were simulated). You have successfully distilled true presence-absence from noisy, confounded data.
 
