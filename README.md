@@ -3,7 +3,7 @@ is a tool to scan population genomic datasets for sex-specific loci.
 
 Privacy-rarefaction was developed to distinguish biological, population genetic polymorphisms from stochastic artefacts in presence-absence data. Common reduced-representation sequencing methods such as GBS, RAD-seq, ddRAD-seq, genome skimming, etc. are all partially stochastic in respect to which loci are sequenced in which individual, hence actual genomic presence-absence polymorphisms are confounded. When seeking loci private to one of two sets of individuals (e.g. females and males, resp. Y or W chromosomes), a practical dilemma arises. One may either compare few individuals per set and thus study many loci, but a high proportion of these will erroneously be classified as private (false positives). Alternatively, one may compare many individuals per set to increase the  confidence of classification, but this necessarily discards a large proportion of sequenced loci (possibly loosing all loci). By iterating from few to many individuals per set (stringency), privacy-rarefaction generates an objective and repeatable assessment of biological signal and stochasticity in presence-absence, including intuitive visualisation and significance tests. Privacy-rarefaction is model-free and uses permutations of the real data to generate specific null-hypotheses against which candidate sex-specific loci are evaluated. It helps to get the most out of your sequencing data without discarding any information. More about privacy-rarefaction can be found in the manuscript
 
-Scharmann et al (). TBA
+Scharmann, M., Grafe, T. U., Metali, F. and Widmer, A. (2017). Sex-determination and sex chromosomes are shared across the radiation of dioecious Nepenthes pitcher plants. bioRxiv 240259.
 
 Please cite this manuscript if using privacy-rarefaction in your work.
 
@@ -18,7 +18,7 @@ Privacy-rarefaction is currently implemented as a command line script in python 
 - subprocess
 - multiprocessing
 
-Privacy-rarefaction will call samtools idxstats (LINK), hence you need to have 'samtools' in the $PATH variable.
+Privacy-rarefaction will call samtools idxstats (http://www.htslib.org/), hence you need to have 'samtools' in the $PATH variable.
 
 ## Installation
 No installation required. Download / copy the main script 'privacy-rarefaction.py' and the plotting function for R, or simply clone this repository.
