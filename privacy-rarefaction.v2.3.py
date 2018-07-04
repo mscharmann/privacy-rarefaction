@@ -237,9 +237,9 @@ def privacy_rarefaction_core(bam_dir, sexdict, n_resampling, CPUs, bam_suffix, m
 	
 	# clear prev. outputs files if present:
 	with open("male_specific_candidates." + output_name + ".txt", "w") as OUTFILE:
-		OUTFILE.write("subsample size per sex" + "\t" + "contig_ID" + "\t" + "subsampling bootstrap support" + "\n")
+		OUTFILE.write("subsample size per sex" + "\t" + "contig_ID" + "\t" + "subsampling bootstrap support" + "\t" + "number of F mapping this contig" + "\n")
 	with open("female_specific_candidates." + output_name + ".txt", "w") as OUTFILE:
-		OUTFILE.write("subsample size per sex" + "\t" + "contig_ID" + "\t" + "subsampling bootstrap support" + "\n")
+		OUTFILE.write("subsample size per sex" + "\t" + "contig_ID" + "\t" + "subsampling bootstrap support" + "\t" + "number of M mapping this contig" + "\n")
 	
 		
 	consistently_specific_loci = {}
@@ -266,14 +266,14 @@ def privacy_rarefaction_core(bam_dir, sexdict, n_resampling, CPUs, bam_suffix, m
 		consistently_specific_loci[i] = [good_male_specs,good_female_specs]
 	
 		print len(good_male_specs), len(good_female_specs)
-		
+#		print mapping_data
 #	print "got sex specific loci IDs that are consistent among 0.5 of subsampling rounds, outputting to file"		
 #	print pres_abs_resampled_results
 		with open("male_specific_candidates." + output_name + ".txt", "a") as OUTFILE:
 			outlines = []
 #			outlines.append( [ x+"\t"+str(i) for x in consistently_specific_loci[i][0] ] )
 #			outlines.append( [ str(i) + "\t" +  x + "\t" + str((float(m_counts[x])/float(n_resampling))*100.0) for x in consistently_specific_loci[i][0] ] )
-			outlines.append( [ str(i) + "\t" +  x + "\t" + str((float(m_counts[x])/float(n_resampling))*100.0) for x in good_male_specs ] )			
+			outlines.append( [ str(i) + "\t" +  x + "\t" + str((float(m_counts[x])/float(n_resampling))*100.0) + "\t" + str( sum([ mapping_data[x][idx] for idx in sexdict_idx["female"] ]) ) for x in good_male_specs ] )
 			outlines = [ "\n".join(x) for x in outlines[:] ]
 			OUTFILE.write( "\n".join(outlines) + "\n")
 	
@@ -281,7 +281,7 @@ def privacy_rarefaction_core(bam_dir, sexdict, n_resampling, CPUs, bam_suffix, m
 			outlines = []
 #			outlines.append( [ x+"\t"+str(i) for x in consistently_specific_loci[i][1] ] )
 #			outlines.append( [ str(i) + "\t" +  x + "\t" + str((float(f_counts[x])/float(n_resampling))*100.0) for x in consistently_specific_loci[i][1] ] )
-			outlines.append( [ str(i) + "\t" +  x + "\t" + str((float(f_counts[x])/float(n_resampling))*100.0) for x in good_female_specs ] )
+			outlines.append( [ str(i) + "\t" +  x + "\t" + str((float(f_counts[x])/float(n_resampling))*100.0) + "\t" + str( sum([ mapping_data[x][idx] for idx in sexdict_idx["male"] ]) ) for x in good_female_specs ] )
 			outlines = [ "\n".join(x) for x in outlines[:] ]
 			OUTFILE.write( "\n".join(outlines) + "\n")
 	
