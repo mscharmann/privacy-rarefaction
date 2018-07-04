@@ -52,7 +52,7 @@ cd privacy-rarefaction
 ```
 Now execute privacy-rarefaction to check that the relevant python modules are installed. This will also show you the command line arguments of the script:
 ```
-python privacy-rarefaction.v2.2.py --help
+python privacy-rarefaction.v2.3.py --help
 ```
 If it complains about missing modules you need to install or load them first in your environment.
 Else, you are ready to run the privacy rarefaction example, so unpack the example data:
@@ -61,7 +61,7 @@ tar -xzf example.tar.gz
 ```
 In the directory 'example', you will find 20 small .BAM files. These are not real reads mapped to real contigs but for the purpose of this tutorial they will behave as-if, except running much faster. There is also a textfile 'sexlist.txt'. You can now start the analysis like this:
 ```
-python privacy-rarefaction.v2.2.py --bam_dir ./example/ --bam_suffix .bam --sex_list ./example/sexlist.txt --CPUs 12 --o example_run
+python privacy-rarefaction.v2.3.py --bam_dir ./example/ --bam_suffix .bam --sex_list ./example/sexlist.txt --CPUs 12 --o example_run
 
 ```
 After finishing you can inspect the three output files:
