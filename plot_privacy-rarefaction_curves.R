@@ -54,15 +54,19 @@ main=outname
 )
 
 # shaded areas in background
-# find lowest point on X-axis at which at least one of M or F candidates drops to zero, if any
+# find highest point on X-axis for each M,F that is not zero, if any, then take the lower one of those.
+# if no zeros for any sex, then fill entire plot area grey.
+max_nonzero_idxes_m <- max(which(male_specific_mean != 0))
+max_nonzero_idxes_f <- max(which(female_specific_mean != 0))
 zero_idxes_m <- which(male_specific_mean == 0)
 zero_idxes_f <- which(female_specific_mean == 0)
 if (length(cbind(zero_idxes_m,zero_idxes_f)) > 0){
-	lightgrey_xmax <- min(cbind(zero_idxes_m,zero_idxes_f)) - 0.5
+	lightgrey_xmax <- min(cbind(max_nonzero_idxes_m,max_nonzero_idxes_f)) + 0.5
 } else {
 # no upper limit
 lightgrey_xmax <- indata$n_samples_per_sex[length( indata$n_samples_per_sex)] + 100
 }
+
 # find lowest point on X-axis at which M and F standard deviations are non-overlapping, if any
 M_lower_greater_F_upper <- which((male_specific_mean-male_specific_std) > (female_specific_mean+female_specific_std))
 F_lower_greater_M_upper <- which((female_specific_mean-female_specific_std) > (male_specific_mean+male_specific_std))
