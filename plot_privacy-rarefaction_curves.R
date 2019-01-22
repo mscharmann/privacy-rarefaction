@@ -40,12 +40,12 @@ f_lower=log(female_specific_mean-female_specific_std)
 f_upper=log(female_specific_mean+female_specific_std)
 
 g = c(ym,yf)
-ylim_lower = min( g[g!=-Inf] ) 
-ylim_upper = max( g[g!=-Inf] ) 
+ylim_lower = min( g[g!=-Inf] ) - 0.25 
+ylim_upper = max( g[g!=-Inf] ) + 0.25 
 
 pdf(sprintf("candidate_drop.%s.pdf", outname), width = 8, height = 4)
 
-plot(x, ym, pch=19,
+plot(0,type='n',
 ylim=c(ylim_lower,ylim_upper),
 xlim=c(1.0, indata$n_samples_per_sex[length( indata$n_samples_per_sex)] ),
 xlab="stringency (number of samples per sex)",
@@ -53,19 +53,49 @@ ylab="log(sex-specific candidate count) +- SD",
 main=outname
 )
 
+# shaded areas in background
+# find lowest point on X-axis at which at least one of M or F candidates drops to zero, if any
+zero_idxes_m <- which(male_specific_mean == 0)
+zero_idxes_f <- which(female_specific_mean == 0)
+if (length(cbind(zero_idxes_m,zero_idxes_f)) > 0){
+	lightgrey_xmax <- min(cbind(zero_idxes_m,zero_idxes_f)) - 0.5
+} else {
+# no upper limit
+lightgrey_xmax <- indata$n_samples_per_sex[length( indata$n_samples_per_sex)] + 100
+}
+# find lowest point on X-axis at which M and F standard deviations are non-overlapping, if any
+M_lower_greater_F_upper <- which((male_specific_mean-male_specific_std) > (female_specific_mean+female_specific_std))
+F_lower_greater_M_upper <- which((female_specific_mean-female_specific_std) > (male_specific_mean+male_specific_std))
+
+if (length(cbind(M_lower_greater_F_upper,F_lower_greater_M_upper)) > 0){
+	darkgrey_xmax <- min(cbind(M_lower_greater_F_upper,F_lower_greater_M_upper)) - 0.5
+} else if ( length(cbind(zero_idxes_m,zero_idxes_f)) > 0)  {
+# overlap in STD ranges stops when mean of one sex drops to zero: darkgrey covers all of lightgrey
+darkgrey_xmax <- lightgrey_xmax
+} else {
+# no upper limit
+darkgrey_xmax <- indata$n_samples_per_sex[length( indata$n_samples_per_sex)] + 100
+}
+# xleft,ylower,xright,yupper
+rect(0,ylim_lower-100,lightgrey_xmax,ylim_upper**2,lty=0,col = rgb(0.5,0.5,0.5,1/4))
+rect(0,ylim_lower-100,darkgrey_xmax,ylim_upper**2,lty=0,col = rgb(0.5,0.5,0.5,1/4))
+
+# add the data
 arrows(x, ym , x, m_lower, length=0.05, angle=90, code=2)
 arrows(x, ym , x, m_upper, length=0.05, angle=90, code=2)
 lines(x, ym)
-
-#points(x, yf, pch = 21, bg="white" )
-lines(x, yf)
-#arrows(x, f_lower, x, f_upper, length=0.05, angle=90, code=3)
+points(x, ym, pch=19, bg="black")
 
 arrows(x, yf , x, f_lower, length=0.05, angle=90, code=2)
 arrows(x, yf , x, f_upper, length=0.05, angle=90, code=2)
+lines(x, yf)
 points(x, yf, pch = 21, bg="white" )
 
-legend("topright", legend=c("male-specific (Y-hemizygous)", "female-specific (W-hemizygous)"),  pch = c(19, 21))
+legend("topright", legend=c("male-specific (Y-hemizygous)", "female-specific (W-hemizygous)"),  pch = c(19, 21), bg = "white")
+
+#legend("bottomleft", title = "background shading", legend=c("no significant difference","significant difference","only one sex has specific markers"),  bg = "white", fill=c(rgb(0.5,0.5,0.5,2/4),rgb(0.5,0.5,0.5,1/4),"white"))
+
+
 dev.off()
 
 detach(indata)
