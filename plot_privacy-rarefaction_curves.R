@@ -48,7 +48,7 @@ pdf(sprintf("candidate_drop.%s.pdf", outname), width = 8, height = 4)
 plot(0,type='n',
 ylim=c(ylim_lower,ylim_upper),
 xlim=c(1.0, indata$n_samples_per_sex[length( indata$n_samples_per_sex)] ),
-xlab="stringency (number of samples per sex)",
+xlab="number of individuals of each sex (stringency)",
 ylab="log(sex-specific candidate count) +- SD",
 main=outname
 )
