@@ -162,25 +162,29 @@ done
 
 ```
 
-## Privacy-rarefaction with kmers
+
+
+# Privacy-rarefaction with kmers
 The resampling and bootstrapping idea behind privacy-rarefaction is NOT limited to reduced-representation data, but whole-genome data from a population can also be used. We provide a version here that scans for sex-specific kmers, as extracted by jellyfish from the read files.
 
 Here is an example workflow:
 
-# 1. extract kmers
+## 1. extract kmers
 
 Extract the kmers from each individual with jellyfish ( https://github.com/gmarcais/Jellyfish )
 
+```
 for sample in $( cut -f1 sex_list.txt ) ; do
 echo $sample
 ls ${sample}.*.fq.gz | xargs -n 1 echo gunzip -c > generators
 jellyfish count -g generators -G 1 -m 93 -s 100M -t 10 -C -o ${sample}.mer_counts.jf
 jellyfish dump ${sample}.mer_counts.jf > ${sample}.93mer_counts.jf.dump
-
 done
+```
 
-# 2. run privacy rarefaction
+## 2. run privacy rarefaction
 
-python privacy-rarefaction.kmers.v3.py --dump_dir ./ --sex_list sex_list_spissifolium.excluded_potential_contaminated.txt --CPUs 12 --o 93mers.mincount2.minshared6.minstringency8 --n_resampling 200 --min_support_to_report_kmers 0.2 --dump_suffix .93mer_counts.jf.dump --min_count 1 --min_shared 6 --min_stringency 7
-
+```
+python privacy-rarefaction.kmers.v3.py --dump_dir ./ --sex_list sex_list.txt --CPUs 12 --o 93mers.mincount2.minshared6.minstringency8 --n_resampling 200 --min_support_to_report_kmers 0.2 --dump_suffix .93mer_counts.jf.dump --min_count 1 --min_shared 6 --min_stringency 7
+```
 
