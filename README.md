@@ -1,5 +1,5 @@
 # privacy-rarefaction 
-is a tool to scan population genomic datasets for sex-specific loci.
+is a tool to scan population genomic datasets for sex-specific sequences (contigs of an assembly, or kmers if reference-free).
 
 Privacy-rarefaction was developed to distinguish biological, population genetic polymorphisms from stochastic artefacts in presence-absence data. Common reduced-representation sequencing methods such as GBS, RAD-seq, ddRAD-seq, genome skimming, etc. are all partially stochastic in respect to which loci are sequenced in which individual, hence actual genomic presence-absence polymorphisms are confounded. When seeking loci private to one of two sets of individuals (e.g. females and males, resp. Y or W chromosomes), a practical dilemma arises. One may either compare few individuals per set and thus study many loci, but a high proportion of these will erroneously be classified as private (false positives). Alternatively, one may compare many individuals per set to increase the  confidence of classification, but this necessarily discards a large proportion of sequenced loci (possibly loosing all loci). By iterating from few to many individuals per set (stringency), privacy-rarefaction generates an objective and repeatable assessment of biological signal and stochasticity in presence-absence, including intuitive visualisation and significance tests. Privacy-rarefaction is model-free and uses permutations of the real data to generate specific null-hypotheses against which candidate sex-specific loci are evaluated. It helps to get the most out of your sequencing data without discarding any information. More about privacy-rarefaction can be found in the manuscript
 
@@ -164,7 +164,7 @@ done
 
 
 
-# Privacy-rarefaction with kmers
+# privacy-rarefaction with kmers
 The resampling and bootstrapping idea behind privacy-rarefaction is NOT limited to reduced-representation data, but whole-genome data from a population can also be used. We provide a version here that scans for sex-specific kmers, as extracted by jellyfish from the read files.
 
 Here is an example workflow:
@@ -182,7 +182,7 @@ jellyfish dump ${sample}.mer_counts.jf > ${sample}.93mer_counts.jf.dump
 done
 ```
 
-## 2. run privacy rarefaction
+## 2. run privacy-rarefaction
 
 ```
 python privacy-rarefaction.kmers.v3.py --dump_dir ./ --sex_list sex_list.txt --CPUs 12 --o 93mers.mincount2.minshared6.minstringency8 --n_resampling 200 --min_support_to_report_kmers 0.2 --dump_suffix .93mer_counts.jf.dump --min_count 1 --min_shared 6 --min_stringency 7
