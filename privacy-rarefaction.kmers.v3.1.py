@@ -15,6 +15,7 @@ import subprocess
 import multiprocessing as mp
 import collections
 import random
+import gzip
 
 """
 example usage:
@@ -170,14 +171,21 @@ def MT_read_inputs(all_samples, CPUs, dump_dir, dump_suffix, min_count):
 def read_jellyfish_dump( infile, min_count ):
 	
 	count_data = []
-	with open(infile, "r") as F:	
-		for line in F:
-			if line.startswith(">"):
-				cnt = int( line.rstrip("\n").lstrip(">"))
-			else:
-				tag = line.rstrip("\n")
-				if cnt >= min_count:
-					count_data.append( [tag, 1] )
+	if infile.endswith(".gz"):
+		F = gzip.open(infile, "r")
+	else:
+		F = open(infile, "r")
+
+
+	for line in F:
+		if line.startswith(">"):
+			cnt = int( line.rstrip("\n").lstrip(">"))
+		else:
+			tag = line.rstrip("\n")
+			if cnt >= min_count:
+				count_data.append( [tag, 1] )
+	
+	F.close()
 
 	return count_data
 	
