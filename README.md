@@ -32,6 +32,10 @@ Privacy-rarefaction is not limited to RAD-seq and similar data types, but it can
 
 RNA-seq reads are not adviseable for privacy-rarefaction because they indicate only sex-specific gene expression, but not necessarily sex-specific genome content. In contrast, denovo assembled transcriptome contigs from RNA-seq data by e.g. Trinity are very useful as reference contigs against which genomic reads can be mapped. Privacy-rarefaction was successfully used to identify the complete sequences of sex-specific genes by mapping ddRAD-seq reads against transcriptome contigs.
 
+### recent changes:
+NEW in v 2.4: - parameter "--min_prop_contigs" to exclude samples with only few contigs covered; these can make the results worse / less stable. 
+For example, if 9 out of 10 males are high-coverage but 1 has very few reads, it is extremely unlikely that any Y-specific contigs were sequenced in that low-coverage sample even though they may have been present in its genome. At 9 M versus 9 F, there is a small probability (10%) to sample only the 9 high-coverage males, but in 90% of resampled sets of males the problematic one will be included, causing the apparent absence of Y-contigs. Therefore, it can greatly increase the power of the method to exclude samples with unusually few contigs present (low coverage). 
+
 
 ## Outputs
 - quantitative results: permutation_results.txt - to decide whether Y-hemizygous or W-hemizygous contigs exist

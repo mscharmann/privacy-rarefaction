@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # python 2.6 or 2.7 
 
-# privacy-rarefaction.v2.2.py
+# privacy-rarefaction.v2.4.py
 # a python script that implements privacy-rarefaction to extract sex-specific RAD-tags from .bam alignment files
 # Copyright (C) 2017, ETH Zurich, Mathias Scharmann
 # 
@@ -72,6 +72,10 @@ for n in 1,2,3, ... [minimum sample size of the two sexes]:
 		2. count how many times each locus occured in the female specific sets
 		This generates a bootstrap support value for each locus.
 		
+
+NEW in v 2.4: - parameter "--min_prop_contigs" to exclude samples with only few contigs covered; these can make the results worse / less stable. 
+For example, if 9 out of 10 males are high-coverage but 1 has very few reads, it is extremely unlikely that any Y-specific contigs were sequenced in that low-coverage sample even though they may have been present in its genome. At 9 M versus 9 F, there is a small probability (10%) to sample only the 9 high-coverage males, but in 90% of resampled sets of males the problematic one will be included, causing the apparent absence of Y-contigs. Therefore, it can greatly increase the power of the method to exclude samples with unusually few contigs present (low coverage). 
+
 """
 
 
@@ -110,7 +114,7 @@ def get_commandline_arguments ():
 	parser.add_argument("--n_resampling", nargs='?', help="number of resampled datasets to be drawn for jacknifing over sample size & number of permutations for sex vs. sample ID, default = 200", metavar="INT", default = "200")
 	parser.add_argument("--min_support_to_report_loci", nargs='?', help="minimum boostrap support that a locus must reach to be reported in the qualitative results, default = 0.5", metavar="FLOAT", default = "0.5")
 	parser.add_argument("--min_cov", nargs='?', help="minimum read coverage (depth) per contig to count as 'present', below contig will be calssified as 'absent', default = 1", metavar="INT", default = "1")
-	
+	parser.add_argument("--min_prop_contigs", nargs='?', help="exclude samples with only few contigs present (low coverage saples), if they contain less than X (proportion) of the mean number of present contigs, default = 0.0 (no exclusion)", metavar="FLOAT", default = "0")
 	args = parser.parse_args()
 	
 	linebreak_check(args.sexlistfile)
@@ -180,7 +184,7 @@ def privacy_rarefaction_core(bam_dir, sexdict, n_resampling, CPUs, bam_suffix, m
 	all_samples = sorted(sexdict["male"] + sexdict["female"])
 	
 	# read mapping info to memory; only once!
-	print "reading mapping information"
+	print "reading mapping information (second pass)"
 	mapping_data = {}
 	for sample in all_samples:
 		sample_mapped = get_pres_abs_per_contig (bam_dir + sample + bam_suffix, min_cov)
@@ -482,8 +486,53 @@ def get_pres_abs_per_contig (bamfile, min_cov):
 				stdout_dict[tag] = 0
 	return stdout_dict
 
-		
 
+def detect_and_drop_low_coverage_samples (bam_dir, bam_suffix, sexdict, min_cov, min_prop_contigs):
+	
+	"""
+	evaluates number of contigs present per each sample, 
+	then identifies the samples with less than min_prop_contigs [FLOAT 0 <= X <= 1] of the average number of present contigs
+	returns a reduced sexdict without these samples
+	"""
+		
+	all_samples = sorted(sexdict["male"] + sexdict["female"])
+	
+	sexdict_idx = {}
+	for sex in sexdict.keys():
+		for sample in sexdict[sex]:
+			idx = all_samples.index(sample)
+			try:
+				sexdict_idx[sex].append(idx)
+			except KeyError:
+				sexdict_idx[sex] = [idx]
+	
+	all_samples = sorted(sexdict["male"] + sexdict["female"])
+	
+	# read mapping info
+	print "reading mapping information (first pass)"
+	contig_presence_per_sample_list = []
+	for sample in all_samples:
+		sample_mapped = get_pres_abs_per_contig (bam_dir + sample + bam_suffix, min_cov)
+		total_present_contigs = sum( sample_mapped.values())
+		contig_presence_per_sample_list.append( total_present_contigs )
+	
+	mean_n_contigs = numpy.mean(contig_presence_per_sample_list)
+	threshold = min_prop_contigs * mean_n_contigs
+	
+	print "avg. number of present contigs per sample =", mean_n_contigs
+	print "discarding samples with less than", threshold, "present contigs"
+	
+	good_samples = [x for i,x in enumerate(all_samples) if contig_presence_per_sample_list[i] >= threshold]
+	
+	print "retained", len(good_samples), "samples out of", len(all_samples)
+	
+	new_sexdict = {"male":[],"female":[]}
+	for s in good_samples:
+		sex = [k for k,v in sexdict.items() if s in v][0]
+		new_sexdict[sex].append(s)
+	
+	return new_sexdict
+	
 ######################## MAIN
 
 args = get_commandline_arguments ()
@@ -493,6 +542,9 @@ args.bam_suffix = args.bam_suffix.strip()
 check_congruence (args.sexlistfile, args.bam_dir,args.bam_suffix)
 
 sexdict = read_sexlist (args.sexlistfile)
+
+if args.min_prop_contigs != "0": # only do this if threshold is desired
+	sexdict = detect_and_drop_low_coverage_samples (args.bam_dir, args.bam_suffix, sexdict, int(args.min_cov), float(args.min_prop_contigs))
 
 privacy_rarefaction_core(args.bam_dir, sexdict, int(args.n_resampling), int(args.CPUs), args.bam_suffix, float(args.min_support_to_report_loci), int(args.min_cov), args.o)
 
