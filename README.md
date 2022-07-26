@@ -7,6 +7,24 @@ Scharmann, M., Grafe, T. U., Metali, F. and Widmer, A. (2017). Sex-determination
 
 Please cite this manuscript if using privacy-rarefaction in your work.
 
+# NEW: KMER-based versions
+for KMC version (```privacy-rarefaction.kmers.KMC.v1.py```), need additional dependency KMC. First run KMC count on each of the samples
+```
+samples=$( ls *.fq.gz | sed 's/.F.fq.gz//g' | sed 's/.R.fq.gz//g' | sort | uniq )
+for sample in $samples ; do
+echo $sample
+echo ${sample}.F.fq.gz >input_file_names
+kmc -m5 -sm -k25 -fq -ci2 -t12 @input_file_names ${sample} ./
+rm input_file_names
+done
+
+```
+Then run the python2.7 script, which will call KMC operations and produce a result table:
+```
+python2.7 privacy-rarefaction.kmers.KMC.v1.py --kmc_dir . --sex_list morph_phenotypes.txt --CPUs 12 --o FUFU --max_sps 15 --n_resampling 30
+```
+
+
 ## Requirements, Dependencies
 Privacy-rarefaction is currently implemented as a command line script in python versions 2.6 and 2.7. It will run on desktop computers but it is advised to use a linux computer cluster for speed and simplicity. Mac and Windows operating systems are not tested. Required python modules:
 - sys
@@ -35,7 +53,6 @@ RNA-seq reads are not adviseable for privacy-rarefaction because they indicate o
 ### recent changes:
 NEW in v 2.4: - parameter "--min_prop_contigs" to exclude samples with only few contigs covered; these can make the results worse / less stable. 
 For example, if 9 out of 10 males are high-coverage but 1 has very few reads, it is extremely unlikely that any Y-specific contigs were sequenced in that low-coverage sample even though they may have been present in its genome. At 9 M versus 9 F, there is a small probability (10%) to sample only the 9 high-coverage males, but in 90% of resampled sets of males the problematic one will be included, causing the apparent absence of Y-contigs. Therefore, it can greatly increase the power of the method to exclude samples with unusually few contigs present (low coverage). 
-
 
 ## Outputs
 - quantitative results: permutation_results.txt - to decide whether Y-hemizygous or W-hemizygous contigs exist
